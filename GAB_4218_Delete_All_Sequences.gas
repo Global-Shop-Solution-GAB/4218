@@ -1,0 +1,51 @@
+Program.Sub.ScreenSU.Start
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'assign to hook 16630-Populate and 16670-Script 1 Button
+
+V.Local.sJob.Declare(String)
+V.Local.sSuffix.Declare(String)
+V.Local.sSQL1.Declare(String)
+V.Local.sSQL2.Declare(String)
+V.Local.sSQL3.declare(String)
+
+Function.Intrinsic.Control.If(V.Caller.Hook,=,16630)
+	Variable.passed.000091.set("Delete All Seq")
+Function.Intrinsic.Control.ElseIf(V.Caller.Hook,=,16670)
+	'Set work order number
+	V.Local.sJob.set(V.Passed.000003)
+	V.Local.sSuffix.Set(V.Passed.000004)
+	
+	'build SQL statements
+	F.Intrinsic.String.Build("DELETE FROM JOB_OPERATIONS WHERE JOB = '{0}' AND SUFFIX = '{1}'",V.Local.sJob,V.Local.sSuffix,V.Local.sSQL1)
+	F.Intrinsic.String.Build("DELETE FROM SCHED_WO_SUPP WHERE WO = '{0}' AND WO_SUFFIX = '{1}'",V.local.sJob,V.Local.sSuffix,V.local.sSQL2)
+	F.Intrinsic.String.Build("SELECT * FROM JOB_DETAIL WHERE JOB = '{0}' AND SUFFIX = '{1}'",V.Local.sJob,V.Local.sSuffix,V.Local.sSQL3)
+	
+	'open ODBC connection
+	F.ODBC.Connection!conx.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+	
+	'check to see if the record exists in JOB_DETAIL.  If so, do nothing.  If not, execute SQL statements.
+	F.ODBC.Connection!conx.OpenRecordsetRW("check",V.Local.sSQL3)
+		F.Intrinsic.Control.If(V.ODBC.conx!check.EOF,=,True)
+			F.ODBC.Connection!conx.Execute(V.Local.sSQL1)
+			F.ODBC.Connection!conx.Execute(V.Local.sSQL2)
+			F.Intrinsic.UI.Msgbox("All sequences deleted.")
+		F.Intrinsic.Control.Else
+			F.Intrinsic.UI.Msgbox("Cannot delete sequences because detail records exist.")
+		F.Intrinsic.Control.EndIf
+		
+	'close connection
+	F.ODBC.Connection!conx.Close
+Function.Intrinsic.Control.EndIf
+
+Program.Sub.Main.End
+
+Program.Sub.Comments.Start
+${$0$}$Delete All WO Sequences$}$Andrew Williams$}$08/15/2016
+Program.Sub.Comments.End
+
